@@ -4,79 +4,164 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SKU Image Search</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-</head>
-<body>
-    <h1>SKU Image Search</h1>
-
-    <!-- Manual SKU Search -->
-    <form method="POST">
-        {% csrf_token %}
-        <label for="sku">Enter SKU Number:</label>
-        <input type="text" id="sku" name="sku" required>
-        <button type="submit">Search</button>
-    </form>
-
-    <!-- Barcode Scanner -->
-    <h2>Scan Barcode:</h2>
-    <button onclick="startScanner()">Start Barcode Scanner</button>
-    <div id="scanner-container"></div>
-    <input type="hidden" id="scanned-sku" name="scanned_sku">
-    <button onclick="submitScannedSku()">Search Scanned SKU</button>
-
-    <script>
-        function startScanner() {
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#scanner-container'),
-                },
-                decoder: {
-                    readers: ["code_128_reader", "ean_reader"],
-                },
-            }, function(err) {
-                if (err) {
-                    console.error(err);
-                    return;
-                }
-                Quagga.start();
-            });
-
-            Quagga.onDetected(function(data) {
-                document.getElementById('scanned-sku').value = data.codeResult.code;
-                Quagga.stop(); // Stop the scanner once the barcode is detected
-            });
+    <style>
+        /* General body styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f4f7;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        function submitScannedSku() {
-            const scannedSku = document.getElementById('scanned-sku').value;
-            if (scannedSku) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/';
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'sku';
-                input.value = scannedSku;
-                form.appendChild(input);
-                document.body.appendChild(form);
-                form.submit();
-            } else {
-                alert('No barcode scanned.');
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .form-container {
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 45%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-width: 70%; /* Reduced border width by 30% */
+            border-radius: 4px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 15px;
+            font-size: 14px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .result-container {
+            width: 45%;
+            text-align: center;
+        }
+
+        .result-container h2 {
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        img {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            max-width: 100%;
+            height: auto;
+            margin: 20px 0;
+            display: block;
+        }
+
+        .result-sku {
+            color: #333;
+            font-size: 16px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .searched-sku {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        p {
+            color: #d9534f;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .form-container,
+            .result-container {
+                width: 100%;
+                max-width: 400px;
+                margin-bottom: 20px;
             }
         }
-    </script>
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Input Section -->
+        <div class="form-container">
+            <h1>SKU Image Search</h1>
+            <form method="POST">
+                {% csrf_token %}
+                <label for="sku">Enter SKU Number:</label>
+                <input type="text" id="sku" name="sku" required>
+                <div class="button-container">
+                    <button type="submit">Search</button>
+                    <button type="button" onclick="window.location.href='/'">Refresh</button>
+                </div>
+            </form>
 
-    <!-- Display Results -->
-    {% if image_url %}
-        <h2>Result:</h2>
-        <img src="{{ image_url }}" alt="Image for SKU" style="max-width: 50%; height: 50%;">
-    {% elif error %}
-        <p style="color:red;">{{ error }}</p>
-    {% endif %}
+            {% if sku %}
+                <div class="searched-sku">You searched for: <strong>{{ sku }}</strong></div>
+            {% endif %}
+        </div>
 
-    <br><br>
-    <button onclick="window.location.href='/';">Refresh</button>
+        <!-- Result Section -->
+        <div class="result-container">
+            {% if image_url %}
+                <h2>Result</h2>
+                <img src="{{ image_url }}" alt="Image for SKU">
+                <p class="result-sku">SKU: {{ sku }}</p>
+            {% elif error %}
+                <p>{{ error }}</p>
+            {% endif %}
+        </div>
+    </div>
 </body>
 </html>
