@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKU Image Search</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+</head>
+<body>
+    <h1>SKU Image Search</h1>
+
+    <!-- Manual SKU Search -->
+    <form method="POST">
+        {% csrf_token %}
+        <label for="sku">Enter SKU Number:</label>
+        <input type="text" id="sku" name="sku" required>
+        <button type="submit">Search</button>
+    </form>
+
+    <!-- Barcode Scanner -->
+    <h2>Scan Barcode:</h2>
+    <button onclick="startScanner()">Start Barcode Scanner</button>
+    <div id="scanner-container"></div>
+    <input type="hidden" id="scanned-sku" name="scanned_sku">
+    <button onclick="submitScannedSku()">Search Scanned SKU</button>
+
+    <script>
+        function startScanner() {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#scanner-container'),
+                },
+                decoder: {
+                    readers: ["code_128_reader", "ean_reader"],
+                },
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                Quagga.start();
+            });
+
+            Quagga.onDetected(function(data) {
+                document.getElementById('scanned-sku').value = data.codeResult.code;
+                Quagga.stop(); // Stop the scanner once the barcode is detected
+            });
+        }
+
+        function submitScannedSku() {
+            const scannedSku = document.getElementById('scanned-sku').value;
+            if (scannedSku) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/';
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'sku';
+                input.value = scannedSku;
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            } else {
+                alert('No barcode scanned.');
+            }
+        }
+    </script>
+
+    <!-- Display Results -->
+    {% if image_url %}
+        <h2>Result:</h2>
+        <img src="{{ image_url }}" alt="Image for SKU" style="max-width: 50%; height: 50%;">
+    {% elif error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
+    <br><br>
+    <button onclick="window.location.href='/';">Refresh</button>
+</body>
+</html>
